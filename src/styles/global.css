@@ -1,0 +1,4 @@
+.ghana-gold { @apply text-yellow-500; }
+.ghana-green { @apply text-green-600; }
+.ghana-red { @apply text-red-600; }
+.ghana-dark { @apply text-gray-900; }
