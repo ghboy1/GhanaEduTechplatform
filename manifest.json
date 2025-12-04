@@ -1,0 +1,22 @@
+{
+  "name": "Ghana Learning Platform",
+  "short_name": "Ghana Edu",
+  "description": "National Learning Platform for Ghana",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#006B3F",
+  "theme_color": "#006B3F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
