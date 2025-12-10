@@ -4,7 +4,7 @@ import { BookOpen, Users, Heart, School } from 'lucide-react';
 function HomePage({ onSelectUserType }) {
   const userTypes = [
     {
-      id: 'student',
+      id: 'student-login',
       title: 'Student Portal',
       description: 'Learn, practice, and compete with students across Ghana',
       icon: <BookOpen size={64} />,
@@ -12,7 +12,7 @@ function HomePage({ onSelectUserType }) {
       features: ['Interactive Lessons', 'Quizzes & Games', 'National Leaderboard', 'Earn Badges']
     },
     {
-      id: 'teacher',
+      id: 'teacher-login',
       title: 'Teacher Dashboard',
       description: 'Manage classes, create assignments, and track student progress',
       icon: <School size={64} />,
@@ -20,12 +20,20 @@ function HomePage({ onSelectUserType }) {
       features: ['Class Management', 'Create Assignments', 'Performance Analytics', 'Parent Communication']
     },
     {
-      id: 'parent',
+      id: 'parent-login',
       title: 'Parent Portal',
       description: 'Monitor your child\'s learning journey and communicate with teachers',
       icon: <Heart size={64} />,
       color: 'from-purple-500 to-pink-500',
       features: ['Progress Tracking', 'Teacher Messages', 'Performance Reports', 'Study Recommendations']
+    },
+    {
+      id: 'schoolAdmin-login',
+      title: 'School Admin Portal',
+      description: 'Manage school operations, staff, and student progress efficiently',
+      icon: <Users size={64} />,
+      color: 'from-red-500 to-orange-500',
+      features: ['Staff Management', 'Student Records', 'Reports & Analytics', 'School Notifications']
     }
   ];
 
@@ -64,7 +72,7 @@ function HomePage({ onSelectUserType }) {
           Choose Your Portal
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-4 gap-8">
           {userTypes.map((type) => (
             <button
               key={type.id}

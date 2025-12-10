@@ -1,206 +1,538 @@
-// src/pages/TeacherDashboard.tsx
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import {
+import { 
   Users, BookOpen, TrendingUp, Award, Plus, Send, BarChart3, Calendar, Target,
   Brain, Zap, MessageSquare, Bell, Video, Sparkles, X, Menu, Home, Settings,
-  Moon, Sun, Trophy, Flame, ArrowUpRight, Clock, Download, Search, ChevronDown,
-  Bot, Star, PlayCircle, FileText, Share2, MoreVertical, Edit3, Trash2, Copy,
-  Calendar as CalendarIcon, AlertCircle, CheckCircle, UserCheck
+  Trophy, Clock, Download, Search, ChevronDown, CheckCircle, AlertCircle,
+  UserCheck, FileText, LogOut, Sun, Moon, Filter, SortDesc
 } from 'lucide-react';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
+// Sample data
+const SAMPLE_STUDENTS = [
+  { id: 1, name: 'Kwame Mensah', avatar: '👨', class: 'JHS 2A', score: 85, status: 'active', lastActive: '2 hours ago' },
+  { id: 2, name: 'Ama Asante', avatar: '👩', class: 'JHS 2A', score: 92, status: 'active', lastActive: '1 hour ago' },
+  { id: 3, name: 'Kofi Boateng', avatar: '👦', class: 'JHS 2B', score: 78, status: 'inactive', lastActive: '2 days ago' },
+  { id: 4, name: 'Akosua Darko', avatar: '👧', class: 'JHS 2A', score: 88, status: 'active', lastActive: '30 mins ago' },
+  { id: 5, name: 'Yaw Osei', avatar: '👨', class: 'JHS 2B', score: 95, status: 'active', lastActive: '1 hour ago' },
+];
 
+const SAMPLE_ASSIGNMENTS = [
+  { id: 1, title: 'Algebra Chapter 5', subject: 'Mathematics', dueDate: '2025-12-10', submitted: 24, total: 30, status: 'active' },
+  { id: 2, title: 'Essay Writing', subject: 'English', dueDate: '2025-12-12', submitted: 28, total: 30, status: 'active' },
+  { id: 3, title: 'Chemical Reactions', subject: 'Science', dueDate: '2025-12-15', submitted: 15, total: 30, status: 'upcoming' },
+  { id: 4, title: 'Ghana History Quiz', subject: 'Social Studies', dueDate: '2025-12-08', submitted: 30, total: 30, status: 'completed' },
+];
 
-import AssignmentsTab from '../components/AssignmentsTab';
-import AnalyticsTab from '../components/AnalyticsTab';
-import LiveClassTab from '../components/LiveClassTab';
-import MessagesTab from '../components/MessagesTab';
-import SettingsTab from '../components/SettingsTab';
-// Assuming HomeDashboard is for Overview; adjust if needed
-
-
-interface ScheduleEvent {
-  id: string;
-  day: string;
-  time: string;
-  subject: string;
-  topic: string;
-  type: 'lesson' | 'quiz' | 'revision' | 'exam';
-  color: string;
-}
-
-function SortableScheduleItem({ event }: { event: ScheduleEvent }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: event.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`${event.color} text-white rounded-2xl p-5 shadow-lg hover:scale-105 transition-all cursor-move opacity-90 hover:opacity-100`}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-bold">{event.time}</span>
-        <span className="text-xs px-2 py-1 bg-white/30 rounded-full">{event.type.toUpperCase()}</span>
-      </div>
-      <h4 className="font-bold text-lg">{event.subject}</h4>
-      <p className="text-sm">{event.topic}</p>
-    </div>
-  );
-}
+const ANALYTICS_DATA = {
+  weeklyProgress: [
+    { day: 'Mon', students: 65, assignments: 45 },
+    { day: 'Tue', students: 72, assignments: 52 },
+    { day: 'Wed', students: 68, assignments: 48 },
+    { day: 'Thu', students: 75, assignments: 58 },
+    { day: 'Fri', students: 80, assignments: 65 },
+  ],
+  classPerformance: [
+    { subject: 'Math', average: 78 },
+    { subject: 'Science', average: 85 },
+    { subject: 'English', average: 82 },
+    { subject: 'Social', average: 76 },
+  ]
+};
 
 export default function TeacherDashboard() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState('schedule');
+  const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
-
-  // DRAG & DROP SCHEDULING
-  const [schedule, setSchedule] = useState<ScheduleEvent[]>([
-    { id: '1', day: 'Monday', time: '08:00 - 09:30', subject: 'Mathematics', topic: 'Linear Equations', type: 'lesson', color: 'bg-blue-500' },
-    { id: '2', day: 'Monday', time: '09:30 - 11:00', subject: 'English', topic: 'Comprehension', type: 'lesson', color: 'bg-green-500' },
-    { id: '3', day: 'Tuesday', time: '08:00 - 09:30', subject: 'Science', topic: 'Circulatory System', type: 'lesson', color: 'bg-purple-500' },
-    { id: '4', day: 'Tuesday', time: '10:00 - 11:00', subject: 'ICT', topic: 'Internet Safety', type: 'lesson', color: 'bg-pink-500' },
-    { id: '5', day: 'Wednesday', time: '08:00 - 11:00', subject: 'Math Quiz', topic: 'Weekly Assessment', type: 'quiz', color: 'bg-red-500' },
-  ]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (active.id !== over?.id) {
-      setSchedule((items) => {
-        const oldIndex = items.findIndex(i => i.id === active.id);
-        const newIndex = items.findIndex(i => i.id === over?.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
-
-  // Google Calendar Sync (Ready to Connect)
-  const syncWithGoogleCalendar = () => {
-    alert("Google Calendar Sync Ready! Add your CLIENT_ID in .env");
-    // window.open(`https://accounts.google.com/o/oauth2/v2/auth?...`, '_blank');
-  };
+  const [darkMode, setDarkMode] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [notifications, setNotifications] = useState(3);
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: Home, active: false },
-    { id: 'students', label: 'Students', icon: Users, active: false, badge: 'Live', color: 'bg-red-500' },
-    { id: 'assignments', label: 'Assignments', icon: BookOpen, active: false },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false },
-    { id: 'liveclass', label: 'Live Class', icon: Video, active: false },
-    { id: 'schedule', label: 'Schedule', icon: CalendarIcon, active: true, badge: 'Today', color: 'bg-gradient-to-r from-green-500 to-teal-500' },
-    { id: 'messages', label: 'Messages', icon: MessageSquare, active: false, badge: '8', color: 'bg-purple-500' },
-    { id: 'settings', label: 'Settings', icon: Settings, active: false },
+    { id: 'overview', label: 'Overview', icon: Home },
+    { id: 'students', label: 'Students', icon: Users, badge: '45' },
+    { id: 'assignments', label: 'Assignments', icon: BookOpen, badge: '8' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'schedule', label: 'Schedule', icon: Calendar },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, badge: '12' },
+    { id: 'liveclass', label: 'Live Class', icon: Video },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  return (
-    <>
-      <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50'} transition-all`}>
-        {/* FAB */}
-        <button onClick={() => setShowAIAssistant(true)} className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-2xl hover:scale-110 transition-all z-50 animate-bounce">
-          <Sparkles size={32} />
-        </button>
+  // Overview Tab
+  const OverviewTab = () => (
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 text-white shadow-xl">
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-4xl font-bold mb-2">Welcome back, Mr. Osei! 👋</h2>
+            <p className="text-xl opacity-90">Here's what's happening in your classes today</p>
+          </div>
+          <button className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl font-semibold backdrop-blur-sm transition-all">
+            <Video className="inline mr-2" size={20} />
+            Start Live Class
+          </button>
+        </div>
+      </div>
 
-        {/* Sidebar - Matching Your Screenshot */}
-        <div className="fixed left-0 top-0 bottom-0 w-80 bg-gradient-to-b from-gray-900 to-blue-950 text-white z-40 shadow-2xl">
-          <div className="p-8">
-            <div className="flex items-center gap-4 mb-12">
-              <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-blue-600 rounded-2xl flex items-center justify-center text-3xl font-black">G</div>
-              <div>
-                <h1 className="text-2xl font-bold">Teacher Portal</h1>
-                <p className="text-xs opacity-70">JHS 2A • Accra</p>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard
+          icon={<Users className="text-blue-600" size={32} />}
+          value="45"
+          label="Total Students"
+          change="+5 this week"
+          changeType="positive"
+        />
+        <StatCard
+          icon={<BookOpen className="text-green-600" size={32} />}
+          value="8"
+          label="Active Assignments"
+          change="2 due soon"
+          changeType="warning"
+        />
+        <StatCard
+          icon={<CheckCircle className="text-purple-600" size={32} />}
+          value="92%"
+          label="Avg. Completion"
+          change="+3% from last week"
+          changeType="positive"
+        />
+        <StatCard
+          icon={<Trophy className="text-yellow-600" size={32} />}
+          value="85%"
+          label="Class Average"
+          change="+2% improvement"
+          changeType="positive"
+        />
+      </div>
+
+      {/* Two Column Layout */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Recent Activity */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold">Recent Activity</h3>
+            <button className="text-blue-600 hover:text-blue-700 text-sm font-semibold">
+              View All
+            </button>
+          </div>
+          <div className="space-y-4">
+            {[
+              { action: 'Ama Asante submitted', item: 'Essay Writing', time: '5 mins ago', type: 'success' },
+              { action: 'Kwame Mensah viewed', item: 'Algebra Chapter 5', time: '15 mins ago', type: 'info' },
+              { action: '3 students completed', item: 'Ghana History Quiz', time: '1 hour ago', type: 'success' },
+              { action: 'Kofi Boateng missed deadline', item: 'Chemical Reactions', time: '2 hours ago', type: 'warning' },
+            ].map((activity, idx) => (
+              <div key={idx} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-xl transition-all">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  activity.type === 'success' ? 'bg-green-100' :
+                  activity.type === 'warning' ? 'bg-yellow-100' : 'bg-blue-100'
+                }`}>
+                  {activity.type === 'success' ? <CheckCircle className="text-green-600" size={20} /> :
+                   activity.type === 'warning' ? <AlertCircle className="text-yellow-600" size={20} /> :
+                   <FileText className="text-blue-600" size={20} />}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">{activity.action}</p>
+                  <p className="text-gray-600 text-sm">{activity.item}</p>
+                  <p className="text-gray-400 text-xs mt-1">{activity.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Upcoming Deadlines */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold">Upcoming Deadlines</h3>
+            <button className="text-blue-600 hover:text-blue-700 text-sm font-semibold">
+              + New Assignment
+            </button>
+          </div>
+          <div className="space-y-4">
+            {SAMPLE_ASSIGNMENTS.filter(a => a.status !== 'completed').map((assignment) => (
+              <div key={assignment.id} className="border-l-4 border-blue-500 bg-blue-50 p-4 rounded-r-xl">
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-semibold">{assignment.title}</h4>
+                  <span className="text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded-full">
+                    {assignment.subject}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">
+                    <Clock className="inline mr-1" size={14} />
+                    Due: {assignment.dueDate}
+                  </span>
+                  <span className="font-semibold text-blue-600">
+                    {assignment.submitted}/{assignment.total} submitted
+                  </span>
+                </div>
+                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${(assignment.submitted / assignment.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-2xl shadow-lg p-6">
+        <h3 className="text-xl font-bold mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { icon: <Plus size={24} />, label: 'Create Assignment', color: 'blue' },
+            { icon: <Video size={24} />, label: 'Start Live Class', color: 'red' },
+            { icon: <Send size={24} />, label: 'Send Message', color: 'green' },
+            { icon: <Download size={24} />, label: 'Download Reports', color: 'purple' },
+          ].map((action, idx) => (
+            <button
+              key={idx}
+              className={`p-6 rounded-xl border-2 border-gray-200 hover:border-${action.color}-500 hover:bg-${action.color}-50 transition-all group`}
+            >
+              <div className={`text-${action.color}-600 mb-3`}>
+                {action.icon}
+              </div>
+              <span className="font-semibold text-gray-700 group-hover:text-gray-900">
+                {action.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Students Tab
+  const StudentsTab = () => (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold">Student Management</h2>
+          <p className="text-gray-600 mt-1">Manage and monitor your students</p>
+        </div>
+        <button className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center gap-2">
+          <Plus size={20} />
+          Add Student
+        </button>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex-1 min-w-[300px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search students..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          <button className="px-6 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 flex items-center gap-2">
+            <Filter size={20} />
+            Filter
+          </button>
+          <button className="px-6 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 flex items-center gap-2">
+            <SortDesc size={20} />
+            Sort
+          </button>
+        </div>
+      </div>
+
+      {/* Students List */}
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b-2 border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Student</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Class</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Avg. Score</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Last Active</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SAMPLE_STUDENTS.map((student) => (
+                <tr key={student.id} className="border-b border-gray-100 hover:bg-gray-50 transition-all">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xl">
+                        {student.avatar}
+                      </div>
+                      <span className="font-semibold">{student.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{student.class}</td>
+                  <td className="px-6 py-4">
+                    <span className={`font-semibold ${
+                      student.score >= 85 ? 'text-green-600' :
+                      student.score >= 70 ? 'text-blue-600' : 'text-yellow-600'
+                    }`}>
+                      {student.score}%
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {student.status === 'active' ? '● Active' : '○ Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{student.lastActive}</td>
+                  <td className="px-6 py-4">
+                    <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm">
+                      View Profile →
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Assignments Tab
+  const AssignmentsTab = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold">Assignments</h2>
+          <p className="text-gray-600 mt-1">Create and manage assignments</p>
+        </div>
+        <button className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center gap-2">
+          <Plus size={20} />
+          Create Assignment
+        </button>
+      </div>
+
+      <div className="grid gap-6">
+        {SAMPLE_ASSIGNMENTS.map((assignment) => (
+          <div key={assignment.id} className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-xl font-bold">{assignment.title}</h3>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    assignment.status === 'completed' ? 'bg-green-100 text-green-700' :
+                    assignment.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {assignment.status.toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-gray-600">{assignment.subject}</p>
+              </div>
+              <button className="text-gray-400 hover:text-gray-600">
+                <ChevronDown size={24} />
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="text-gray-400" size={20} />
+                <span className="text-sm text-gray-600">Due: {assignment.dueDate}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="text-gray-400" size={20} />
+                <span className="text-sm text-gray-600">{assignment.total} students</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="text-green-500" size={20} />
+                <span className="text-sm font-semibold text-green-600">
+                  {assignment.submitted} submitted
+                </span>
               </div>
             </div>
 
-            <nav className="space-y-3">
-              {tabs.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl transition-all ${activeTab === item.id ? item.color ? item.color + ' shadow-xl' : 'bg-gradient-to-r from-green-500 to-teal-500 shadow-xl' : 'hover:bg-white/10'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <item.icon size={24} />
-                    <span className="font-medium text-lg">{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={`px-4 py-1 rounded-full text-sm font-bold ${item.color || 'bg-purple-500'} text-white`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-600">Submission Progress</span>
+                <span className="font-semibold">{Math.round((assignment.submitted / assignment.total) * 100)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all"
+                  style={{ width: `${(assignment.submitted / assignment.total) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button className="flex-1 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-100 transition-all">
+                View Submissions
+              </button>
+              <button className="flex-1 border-2 border-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-all">
+                Send Reminder
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Analytics Tab
+  const AnalyticsTab = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold">Analytics & Insights</h2>
+        <p className="text-gray-600 mt-1">Track performance and engagement</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h3 className="text-xl font-bold mb-6">Weekly Activity</h3>
+          <div className="h-64 flex items-end justify-between gap-2">
+            {ANALYTICS_DATA.weeklyProgress.map((day, idx) => (
+              <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                <div 
+                  className="w-full bg-gradient-to-t from-blue-500 to-purple-500 rounded-t-lg transition-all hover:opacity-80"
+                  style={{ height: `${(day.students / 80) * 100}%` }}
+                ></div>
+                <span className="text-sm font-semibold text-gray-600">{day.day}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="pl-80 pt-8 pr-8 pb-20">
-          <div className="max-w-7xl mx-auto">
-          
-            {activeTab === 'assignments' && <AssignmentsTab />}
-            {activeTab === 'analytics' && <AnalyticsTab />}
-            {activeTab === 'liveclass' && <LiveClassTab />}
-            {activeTab === 'schedule' && (
-              <div className="space-y-8">
-                <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-12 text-white shadow-2xl">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h2 className="text-6xl font-bold mb-4">Weekly Schedule</h2>
-                      <p className="text-2xl opacity-90">Drag to reschedule • Sync with Google Calendar</p>
-                    </div>
-                    <button onClick={syncWithGoogleCalendar} className="bg-white text-purple-600 px-8 py-4 rounded-2xl font-bold text-lg flex items-center gap-3 hover:scale-105 transition-all shadow-xl">
-                      <CalendarIcon size={28} /> Sync Calendar
-                    </button>
-                  </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h3 className="text-xl font-bold mb-6">Subject Performance</h3>
+          <div className="space-y-4">
+            {ANALYTICS_DATA.classPerformance.map((subject, idx) => (
+              <div key={idx}>
+                <div className="flex justify-between mb-2">
+                  <span className="font-semibold">{subject.subject}</span>
+                  <span className="text-blue-600 font-bold">{subject.average}%</span>
                 </div>
-
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
-                      <div key={day} className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
-                        <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white p-8 text-center">
-                          <h3 className="text-3xl font-bold">{day}</h3>
-                        </div>
-                        <SortableContext items={schedule.filter(s => s.day === day).map(s => s.id)} strategy={verticalListSortingStrategy}>
-                          <div className="p-6 space-y-6 min-h-96">
-                            {schedule.filter(s => s.day === day).map(event => (
-                              <SortableScheduleItem key={event.id} event={event} />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </div>
-                    ))}
-                  </div>
-                </DndContext>
-
-                <div className="text-center py-12 bg-gradient-to-r from-green-500 to-teal-600 rounded-3xl text-white">
-                  <h3 className="text-4xl font-bold">Drag any lesson to reschedule instantly</h3>
-                  <p className="text-xl mt-4">Changes auto-save • Students & parents notified</p>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full"
+                    style={{ width: `${subject.average}%` }}
+                  ></div>
                 </div>
               </div>
-            )}
-            {activeTab === 'messages' && <MessagesTab />}
-            {activeTab === 'settings' && <SettingsTab />}
+            ))}
           </div>
         </div>
       </div>
-    </>
+    </div>
+  );
+
+  const StatCard = ({ icon, value, label, change, changeType }) => (
+    <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
+      <div className="flex items-center justify-between mb-4">
+        <div className="p-3 bg-gray-50 rounded-xl">
+          {icon}
+        </div>
+      </div>
+      <div className="text-3xl font-bold mb-1">{value}</div>
+      <div className="text-gray-600 text-sm mb-2">{label}</div>
+      <div className={`text-sm font-semibold flex items-center gap-1 ${
+        changeType === 'positive' ? 'text-green-600' :
+        changeType === 'warning' ? 'text-yellow-600' : 'text-gray-600'
+      }`}>
+        {changeType === 'positive' ? '↑' : changeType === 'warning' ? '⚠' : '→'} {change}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50'} transition-colors`}>
+      {/* Top Navigation Bar */}
+      <div className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <Menu size={24} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">
+              N
+            </div>
+            <div>
+              <h1 className="text-lg font-bold">Teacher Portal</h1>
+              <p className="text-xs text-gray-500">Achimota School • JHS 2A</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button className="relative p-2 hover:bg-gray-100 rounded-lg">
+            <Bell size={20} />
+            {notifications > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            )}
+          </button>
+          <button className="p-2 hover:bg-gray-100 rounded-lg">
+            <Settings size={20} />
+          </button>
+        </div>
+      </div>
+
+      {/* Sidebar */}
+      <div className={`fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 transition-transform z-40 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
+        <div className="p-4 space-y-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <tab.icon size={20} />
+                <span className="font-medium">{tab.label}</span>
+              </div>
+              {tab.badge && (
+                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                  activeTab === tab.id ? 'bg-white/20' : 'bg-blue-100 text-blue-600'
+                }`}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className={`pt-16 ${sidebarOpen ? 'lg:pl-64' : ''} transition-all`}>
+        <div className="p-8 max-w-7xl mx-auto">
+          {activeTab === 'overview' && <OverviewTab />}
+          {activeTab === 'students' && <StudentsTab />}
+          {activeTab === 'assignments' && <AssignmentsTab />}
+          {activeTab === 'analytics' && <AnalyticsTab />}
+          {activeTab === 'schedule' && <OverviewTab />}
+          {activeTab === 'messages' && <OverviewTab />}
+          {activeTab === 'liveclass' && <OverviewTab />}
+          {activeTab === 'settings' && <OverviewTab />}
+        </div>
+      </div>
+    </div>
   );
 }
